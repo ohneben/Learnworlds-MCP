@@ -1,0 +1,55 @@
+{
+  "name": "learnworlds-mcp",
+  "version": "1.0.0",
+  "description": "Model Context Protocol server for the LearnWorlds API. Exposes all 94 endpoints as safety-categorized MCP tools (read-only / write / destructive).",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "learnworlds",
+    "lms",
+    "e-learning",
+    "online-courses",
+    "api"
+  ],
+  "license": "MIT",
+  "author": "ohneben",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ohneben/Learnworlds-MCP.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ohneben/Learnworlds-MCP/issues"
+  },
+  "homepage": "https://github.com/ohneben/Learnworlds-MCP#readme",
+  "type": "module",
+  "bin": {
+    "learnworlds-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "spec"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:stdio": "MCP_TRANSPORT=stdio node dist/index.js",
+    "start:http": "MCP_TRANSPORT=http node dist/index.js",
+    "dev": "tsc --watch",
+    "list-tools": "node dist/scripts/list-tools.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
+  }
+}

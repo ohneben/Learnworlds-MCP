@@ -47,15 +47,20 @@ function backoffDelay(attempt: number, base = 500, cap = 8000): number {
   return Math.floor(Math.random() * ceiling);
 }
 
-function expandPath(path: string, args: Record<string, unknown>, pathParamNames: Set<string>): string {
-  return path.replace(/\{([^}]+)\}/g, (_, name: string) => {
-    if (!(name in args)) {
-      throw new Error(`Missing required path parameter "${name}".`);
+/** The input-schema key a parameter's value arrives under (see ParameterSpec.argName). */
+const argKey = (p: { name: string; argName?: string }): string => p.argName ?? p.name;
+
+function expandPath(op: Operation, args: Record<string, unknown>, consumed: Set<string>): string {
+  const pathParams = new Map(op.parameters.filter((p) => p.in === "path").map((p) => [p.name, p]));
+  return op.path.replace(/\{([^}]+)\}/g, (_, name: string) => {
+    const key = pathParams.has(name) ? argKey(pathParams.get(name)!) : name;
+    if (!(key in args)) {
+      throw new Error(`Missing required path parameter "${key}".`);
     }
-    pathParamNames.add(name);
-    const v = args[name];
+    consumed.add(key);
+    const v = args[key];
     if (v === null || v === undefined) {
-      throw new Error(`Path parameter "${name}" cannot be null/undefined.`);
+      throw new Error(`Path parameter "${key}" cannot be null/undefined.`);
     }
     return encodeURIComponent(String(v));
   });
@@ -69,10 +74,11 @@ function buildQueryString(
   const usp = new URLSearchParams();
   for (const p of op.parameters) {
     if (p.in !== "query") continue;
-    if (consumed.has(p.name)) continue;
-    const value = args[p.name];
+    const key = argKey(p);
+    if (consumed.has(key)) continue;
+    const value = args[key];
     if (value === undefined || value === null) continue;
-    consumed.add(p.name);
+    consumed.add(key);
     if (Array.isArray(value)) {
       const explode = p.explode !== false;
       if (explode) {
@@ -98,10 +104,11 @@ function collectExtraHeaders(
   const headers: Record<string, string> = {};
   for (const p of op.parameters) {
     if (p.in !== "header") continue;
-    if (consumed.has(p.name)) continue;
-    const value = args[p.name];
+    const key = argKey(p);
+    if (consumed.has(key)) continue;
+    const value = args[key];
     if (value === undefined || value === null) continue;
-    consumed.add(p.name);
+    consumed.add(key);
     headers[p.name] = String(value);
   }
   return headers;
@@ -165,11 +172,7 @@ export async function callOperation(
   const fetchImpl = cfg.fetchImpl ?? fetch;
 
   const consumed = new Set<string>();
-  const pathParamNames = new Set<string>();
-
-  const expandedPath = expandPath(op.path, args, pathParamNames);
-  for (const name of pathParamNames) consumed.add(name);
-
+  const expandedPath = expandPath(op, args, consumed);
   const query = buildQueryString(op, args, consumed);
   const extraOpHeaders = collectExtraHeaders(op, args, consumed);
 

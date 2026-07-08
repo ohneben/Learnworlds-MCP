@@ -11,6 +11,14 @@ export interface ParameterSpec {
   description?: string;
   schema?: JsonSchema;
   explode?: boolean;
+  /**
+   * The key this parameter is exposed under in the tool's input schema.
+   * Anthropic's API only accepts property keys matching `^[a-zA-Z0-9_.-]{1,64}$`,
+   * but the LearnWorlds spec declares a query param `cf_$field_name` whose `$`
+   * is illegal — one such key would make an MCP client reject the ENTIRE tool
+   * list. Always set on loaded operations; equals `name` when already legal.
+   */
+  argName?: string;
 }
 
 export interface Operation {
@@ -121,6 +129,30 @@ function resolveRequestBody(doc: OpenApiDoc, body: RequestBodyObject | RefObject
 
 const HEADERS_TO_SKIP = new Set(["authorization", "lw-client", "content-type", "accept"]);
 
+/** Anthropic's constraint on tool input-schema property keys. */
+export const TOOL_ARG_KEY = /^[a-zA-Z0-9_.-]{1,64}$/;
+
+const sanitizeArgKey = (name: string): string =>
+  name.replace(/[^a-zA-Z0-9_.-]+/g, "_").replace(/^[_.]+|[_.]+$/g, "").slice(0, 64) || "param";
+
+/**
+ * Give every parameter a schema-legal `argName`, unique within the operation.
+ * Names already matching {@link TOOL_ARG_KEY} pass through unchanged; the rest
+ * (e.g. `cf_$field_name`) are sanitized so a single illegal key can't make an
+ * MCP client reject the whole tool list.
+ */
+export function assignArgNames(params: ParameterSpec[]): ParameterSpec[] {
+  const used = new Set<string>();
+  return params.map((p) => {
+    const base = TOOL_ARG_KEY.test(p.name) ? p.name : sanitizeArgKey(p.name);
+    let argName = base;
+    let i = 2;
+    while (used.has(argName)) argName = `${base.slice(0, 60)}_${i++}`;
+    used.add(argName);
+    return { ...p, argName };
+  });
+}
+
 export function loadOpenApi(yamlPath: string): { operations: Operation[]; doc: OpenApiDoc } {
   const raw = readFileSync(yamlPath, "utf8");
   const doc = parseYaml(raw) as OpenApiDoc;
@@ -175,10 +207,12 @@ export function loadOpenApi(yamlPath: string): { operations: Operation[]; doc: O
         summary: op.summary,
         description: op.description,
         tags: op.tags ?? [],
-        parameters: allParams.map((p) => ({
-          ...p,
-          schema: p.schema ? dereferenceSchema(doc, p.schema) : undefined,
-        })),
+        parameters: assignArgNames(
+          allParams.map((p) => ({
+            ...p,
+            schema: p.schema ? dereferenceSchema(doc, p.schema) : undefined,
+          })),
+        ),
         requestBodySchema,
         requestBodyRequired,
         requestBodyContentType,

@@ -67,4 +67,30 @@ describe("operationsToTools", () => {
       expect(t.inputSchema.additionalProperties).toBe(false);
     }
   });
+
+  it("only exposes Anthropic-legal property keys and tool names — one bad key would break the whole client", () => {
+    // Regression: the LearnWorlds spec declares a query param `cf_$field_name`,
+    // whose `$` Claude's API rejects with
+    // "Property keys should match pattern '^[a-zA-Z0-9_.-]{1,64}$'". A single
+    // illegal key 400s the whole connect and kills all 94 tools.
+    const LEGAL_KEY = /^[a-zA-Z0-9_.-]{1,64}$/;
+    const LEGAL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
+    for (const t of tools) {
+      expect(t.name, `illegal tool name ${JSON.stringify(t.name)}`).toMatch(LEGAL_NAME);
+      for (const key of Object.keys((t.inputSchema.properties as Record<string, unknown>) ?? {})) {
+        expect(key, `${t.name} exposes illegal property key ${JSON.stringify(key)}`).toMatch(LEGAL_KEY);
+      }
+      const required = (t.inputSchema.required as string[] | undefined) ?? [];
+      for (const key of required) {
+        expect(key, `${t.name} requires unknown key ${key}`).toMatch(LEGAL_KEY);
+      }
+    }
+  });
+
+  it("sanitizes the get_users cf_$field_name param to a legal key", () => {
+    const users = tools.find((t) => t.name === "get_users");
+    expect(users, "expected a get_users tool").toBeDefined();
+    const keys = Object.keys(users!.inputSchema.properties as Record<string, unknown>);
+    expect(keys.some((k) => k.includes("$"))).toBe(false);
+  });
 });

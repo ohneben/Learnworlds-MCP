@@ -16,7 +16,7 @@ import { operationsToTools, type ToolDefinition } from "./tools.js";
 function buildServer(tools: ToolDefinition[], config: ReturnType<typeof loadConfig>): Server {
   const toolMap = new Map(tools.map((t) => [t.name, t]));
   const server = new Server(
-    { name: "learnworlds-mcp", version: "1.0.0" },
+    { name: "learnworlds-mcp", version: "1.0.2" },
     { capabilities: { tools: {} } },
   );
 

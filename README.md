@@ -167,6 +167,23 @@ docker run -d --name learnworlds-mcp -p 127.0.0.1:8765:8765 --env-file .env \
   ghcr.io/ohneben/learnworlds-mcp:latest
 ```
 
+### Find it in a registry
+
+The server publishes itself to the [official MCP Registry](https://registry.modelcontextprotocol.io)
+as `io.github.ohneben/learnworlds-mcp`, so MCP clients that browse the registry can
+install it without cloning anything:
+
+```bash
+curl "https://registry.modelcontextprotocol.io/v0/servers?search=io.github.ohneben/learnworlds-mcp"
+```
+
+[`server.json`](./server.json) holds the registry metadata and
+[`glama.json`](./glama.json) the [Glama](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP)
+directory entry. Pushing a `v*` tag builds the image, then publishes the matching
+version to the registry via GitHub OIDC — no tokens to store. The
+`io.modelcontextprotocol.server.name` label in the [Dockerfile](./Dockerfile) is what
+proves the image belongs to that name, so keep it in step with `name` in `server.json`.
+
 ## Get your API credentials
 
 1. Log in to your LearnWorlds school admin.
@@ -313,7 +330,8 @@ npm run list-tools # print the categorized tool catalog (no credentials needed)
 ```
 
 CI builds and tests every push across Node 20 and 22; pushes to `main` also publish a
-Docker image to the GitHub Container Registry.
+Docker image to the GitHub Container Registry. Pushing a `v*` tag publishes that image
+and then the matching version to the official MCP Registry.
 
 ## Notes & conventions
 

@@ -1,6 +1,7 @@
 {
   "name": "learnworlds-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
+  "mcpName": "io.github.ohneben/learnworlds-mcp",
   "description": "Model Context Protocol server for the LearnWorlds API. Exposes all 94 endpoints as safety-categorized MCP tools (read-only / write / destructive).",
   "keywords": [
     "mcp",

@@ -180,9 +180,14 @@ curl "https://registry.modelcontextprotocol.io/v0/servers?search=io.github.ohneb
 [`server.json`](./server.json) holds the registry metadata and
 [`glama.json`](./glama.json) the [Glama](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP)
 directory entry. Pushing a `v*` tag builds the image, then publishes the matching
-version to the registry via GitHub OIDC — no tokens to store. The
-`io.modelcontextprotocol.server.name` label in the [Dockerfile](./Dockerfile) is what
-proves the image belongs to that name, so keep it in step with `name` in `server.json`.
+version to the registry via GitHub OIDC — no tokens to store. The same pipeline can be
+run by hand (**Actions → Publish Docker image → Run workflow**) with a version number,
+for a release that needs re-publishing or one whose tag already exists; it skips the
+publish step if the registry already lists that version.
+
+The `io.modelcontextprotocol.server.name` label in the [Dockerfile](./Dockerfile) is
+what proves the image belongs to that name, so keep it in step with `name` in
+`server.json`. It is applied at build time — there is nothing to verify by hand.
 
 ## Get your API credentials
 
@@ -330,8 +335,9 @@ npm run list-tools # print the categorized tool catalog (no credentials needed)
 ```
 
 CI builds and tests every push across Node 20 and 22; pushes to `main` also publish a
-Docker image to the GitHub Container Registry. Pushing a `v*` tag publishes that image
-and then the matching version to the official MCP Registry.
+Docker image to the GitHub Container Registry. Pushing a `v*` tag — or running the
+workflow by hand with a version — publishes that image and then the matching version to
+the official MCP Registry.
 
 ## Notes & conventions
 

@@ -122,10 +122,13 @@ jobs:
         env:
           VERSION: ${{ needs.release-check.outputs.version }}
         run: |
+          # An OCI package carries the registry host and the version in its
+          # canonical identifier; the registry rejects registryBaseUrl, version
+          # and fileSha256 alongside it, so strip them here as well.
           jq --arg v "$VERSION" '
             .version = $v
-            | .packages[0].version = $v
             | .packages[0].identifier = "ghcr.io/ohneben/learnworlds-mcp:" + $v
+            | .packages[0] |= del(.registryBaseUrl, .version, .fileSha256)
           ' server.json > server.tmp && mv server.tmp server.json
           ./mcp-publisher validate
 

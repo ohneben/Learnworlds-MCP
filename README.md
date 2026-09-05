@@ -3,7 +3,7 @@
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ohneben-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/ohneben)
 
 [![CI](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/ci.yml)
-[![Publish Docker image](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/docker-publish.yml)
+[![Publish image & MCP Registry entry](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/docker-publish.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE.md)
 [![Learnworlds-MCP MCP server](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP/badges/score.svg)](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP)
 

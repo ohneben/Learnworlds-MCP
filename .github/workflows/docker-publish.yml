@@ -1,4 +1,4 @@
-name: Publish Docker image
+name: Publish image & MCP Registry entry
 
 on:
   push:
@@ -135,5 +135,22 @@ jobs:
       - name: Authenticate to the MCP Registry
         run: ./mcp-publisher login github-oidc
 
+      # release-check already skips an published version, but a tag push and the
+      # main-branch run are separate refs and so separate concurrency groups:
+      # both can resolve "unreleased" before either finishes. Losing that race
+      # is a no-op, not a failure.
       - name: Publish server to the MCP Registry
-        run: ./mcp-publisher publish
+        run: |
+          set +e
+          OUTPUT=$(./mcp-publisher publish 2>&1)
+          STATUS=$?
+          echo "$OUTPUT"
+          if [ "$STATUS" -ne 0 ]; then
+            case "$OUTPUT" in
+              *'cannot publish duplicate version'*)
+                echo "::notice::Version is already in the registry; nothing to do."
+                exit 0
+                ;;
+            esac
+            exit "$STATUS"
+          fi

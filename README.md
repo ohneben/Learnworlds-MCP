@@ -5,6 +5,7 @@
 [![CI](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/ci.yml)
 [![Publish Docker image](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/docker-publish.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE.md)
+[![Learnworlds-MCP MCP server](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP/badges/score.svg)](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP)
 
 Run your [LearnWorlds](https://www.learnworlds.com/) school in plain language from AI
 assistants like **Claude**, **Cursor**, and any other
@@ -27,6 +28,7 @@ LLM** and **easy to run for real**:
 | --- | --- |
 | **All 94 endpoints, spec-driven** | Full coverage of courses, users, enrollments, payments, subscriptions, coupons, certificates, seats, community and reporting — nothing hand-picked or left behind. |
 | **Every tool is safety-categorized** 🟢 / 🟡 / 🔴 | A banner at the top of each tool description tells the model exactly what it does — read, create, update or delete — before it acts. |
+| **Descriptions written for agents, not humans** | Every tool spells out its side effects, auth and rate-limit behavior, return shape, error codes, when *not* to reach for it, and which sibling tools are the alternatives. |
 | **Machine-readable MCP annotations** (`readOnlyHint`, `destructiveHint`) | Hosts that honor annotations (Claude included) can auto-trust reads and demand confirmation before anything destructive. |
 | **Automatic retries with backoff** | Transient `429` / `5xx` responses are retried with jittered exponential backoff, honoring the server's `Retry-After` header. |
 | **Built-in rate limiting** | Self-throttles under LearnWorlds' **30 requests / 10 s** cap so a burst of tool calls never trips a `429`. |
@@ -215,6 +217,17 @@ Each tool's description starts with one of these banners and carries the matchin
 The 🟡 write tools total **27** (17 create + 10 update). Hosts that respect annotations
 (Claude included) can require confirmation for `destructiveHint` tools and trust
 `readOnlyHint` tools automatically.
+
+Under the banner, every description follows the same layout so an agent can act on the
+first read instead of probing:
+
+| Line | What it answers |
+|---|---|
+| *(purpose)* | What the endpoint does, straight from the OpenAPI spec, stated once. |
+| **Behavior** | What the call does to the live school, whether it is idempotent, and how auth, throttling and retries are handled for it. |
+| **Parameters** | Only what the input schema cannot say — the `body` wrapper, paging, and any renamed argument. |
+| **Returns** | The `HTTP <status>` + JSON result shape and the error codes that can come back. |
+| **Use when** | When to reach for it, when not to, and up to five sibling tools in the same area. |
 
 > Run `npm run list-tools` (no credentials needed) to print the full catalog and the
 > per-category counts at any time.

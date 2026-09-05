@@ -48,6 +48,44 @@ describe("operationsToTools", () => {
     }
   });
 
+  it("documents behavior, returns and usage in every description", () => {
+    for (const t of tools) {
+      expect(t.description, `${t.name} is missing a Behavior line`).toContain("\nBehavior: ");
+      expect(t.description, `${t.name} is missing a Returns line`).toContain("\nReturns: ");
+      expect(t.description, `${t.name} is missing a Use when line`).toContain("\nUse when: ");
+      expect(t.description, `${t.name} is missing its endpoint`).toContain(
+        `${t.operation.method.toUpperCase()} ${t.operation.path}`,
+      );
+    }
+  });
+
+  it("never repeats the summary when the description already states it", () => {
+    const reset = tools.find((t) => t.name === "reset_user_progress");
+    expect(reset, "expected a reset_user_progress tool").toBeDefined();
+    const purpose = reset!.description.split("\n\n")[1];
+    expect(purpose).toBe("Resets the user's progress on a course or learning activity level.");
+  });
+
+  it("points each tool at same-tag alternatives without listing itself", () => {
+    for (const t of tools) {
+      const related = t.description.match(/Related .+ tools: (.+)\.$/m)?.[1];
+      if (!related) continue;
+      const names = related.split(", ");
+      expect(names.length).toBeLessThanOrEqual(5);
+      expect(names, `${t.name} lists itself as an alternative`).not.toContain(t.name);
+      for (const name of names) {
+        expect(tools.some((o) => o.name === name), `unknown sibling ${name}`).toBe(true);
+      }
+    }
+  });
+
+  it("explains the `body` wrapper only for operations that take a request body", () => {
+    for (const t of tools) {
+      const mentionsBody = t.description.includes("single `body` argument");
+      expect(mentionsBody, `${t.name} body hint mismatch`).toBe(Boolean(t.operation.requestBodySchema));
+    }
+  });
+
   it("keeps read/delete annotations mutually exclusive and correct", () => {
     for (const t of tools) {
       if (t.operation.method === "get") {

@@ -24,6 +24,10 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=8765
 
+# Proves to the MCP Registry that this image belongs to the published server.
+# Must stay byte-identical to "name" in server.json or publishing is rejected.
+LABEL io.modelcontextprotocol.server.name="io.github.ohneben/learnworlds-mcp"
+
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json

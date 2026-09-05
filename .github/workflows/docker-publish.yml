@@ -51,15 +51,22 @@ jobs:
             exit 1
           fi
 
-          FOUND=$(curl -fsS --get "https://registry.modelcontextprotocol.io/v0/servers" \
-            --data-urlencode "search=$NAME" \
-            --data-urlencode "version=$VERSION" \
-            | jq --arg n "$NAME" '[.servers[]? | select(.name == $n)] | length')
-
-          if [ "${FOUND:-0}" = "0" ]; then RELEASE=true; else RELEASE=false; fi
+          # Ask for this exact version by name. The /v0/servers search index is
+          # fuzzy and eventually consistent — it reported a freshly published
+          # version as missing for minutes — so it cannot decide this.
+          ENCODED_NAME="${NAME//\//%2F}"
+          URL="https://registry.modelcontextprotocol.io/v0.1/servers/$ENCODED_NAME/versions/$VERSION"
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 --retry 3 --retry-connrefused "$URL")
+          case "$CODE" in
+            200) RELEASE=false ;;
+            404) RELEASE=true ;;
+            # Never guess: treating an outage as "unreleased" would repoint a
+            # released image tag, and as "released" would silently skip a release.
+            *) echo "::error::unexpected HTTP $CODE from $URL; refusing to guess"; exit 1 ;;
+          esac
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
-          echo "$NAME $VERSION — unreleased: $RELEASE" >> "$GITHUB_STEP_SUMMARY"
+          echo "$NAME $VERSION — unreleased: $RELEASE (registry HTTP $CODE)" >> "$GITHUB_STEP_SUMMARY"
 
   publish:
     name: build & push to GHCR

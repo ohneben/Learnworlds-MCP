@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to build and publish, without the leading v (e.g. 1.0.2). Also published to the MCP Registry.'
-        required: true
+        description: 'Version to build and publish, without the leading v (e.g. 1.0.2). Defaults to the version in server.json.'
+        required: false
         type: string
 
 concurrency:
@@ -22,8 +22,48 @@ permissions:
   packages: write
 
 jobs:
+  # A release is a version in server.json that the MCP Registry has not seen.
+  # Deciding that up front keeps an already-released image tag from being
+  # overwritten by a later push that did not bump the version.
+  release-check:
+    name: resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      release: ${{ steps.resolve.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve the version and whether it is unreleased
+        id: resolve
+        run: |
+          set -euo pipefail
+          NAME=$(jq -r .name server.json)
+          FILE_VERSION=$(jq -r .version server.json)
+
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION:-$FILE_VERSION}"
+          VERSION="${VERSION#v}"
+
+          # A tag has to name the version the repository actually declares.
+          if [[ "$GITHUB_REF" == refs/tags/* && "${GITHUB_REF_NAME#v}" != "$FILE_VERSION" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match server.json version $FILE_VERSION"
+            exit 1
+          fi
+
+          FOUND=$(curl -fsS --get "https://registry.modelcontextprotocol.io/v0/servers" \
+            --data-urlencode "search=$NAME" \
+            --data-urlencode "version=$VERSION" \
+            | jq --arg n "$NAME" '[.servers[]? | select(.name == $n)] | length')
+
+          if [ "${FOUND:-0}" = "0" ]; then RELEASE=true; else RELEASE=false; fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
+          echo "$NAME $VERSION — unreleased: $RELEASE" >> "$GITHUB_STEP_SUMMARY"
+
   publish:
     name: build & push to GHCR
+    needs: release-check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,11 +80,12 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/ohneben/learnworlds-mcp
+          # The bare version tag is only minted for a version the registry has
+          # not seen, so a released tag is never repointed at a later build.
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ inputs.version }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=${{ needs.release-check.outputs.version }},enable=${{ needs.release-check.outputs.release == 'true' }}
             type=ref,event=tag
-            type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,format=short
 
@@ -63,10 +104,9 @@ jobs:
 
   publish-registry:
     name: publish to MCP Registry
-    # Only a version tag or an explicit dispatch produces an image the registry
-    # can verify, and this must not start before that image exists in GHCR.
-    needs: publish
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    # Needs the image it points at to exist in GHCR first.
+    needs: [release-check, publish]
+    if: needs.release-check.outputs.release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -79,35 +119,18 @@ jobs:
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
 
       - name: Pin server.json to the released version
-        id: pin
+        env:
+          VERSION: ${{ needs.release-check.outputs.version }}
         run: |
-          VERSION="${{ inputs.version }}"
-          [ -n "$VERSION" ] || VERSION="$GITHUB_REF_NAME"
-          VERSION="${VERSION#v}"
           jq --arg v "$VERSION" '
             .version = $v
             | .packages[0].version = $v
             | .packages[0].identifier = "ghcr.io/ohneben/learnworlds-mcp:" + $v
           ' server.json > server.tmp && mv server.tmp server.json
           ./mcp-publisher validate
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      # A tag push and a published release both land here for the same ref, so
-      # skip rather than fail if the registry already carries this version.
-      - name: Check whether the version is already published
-        id: published
-        run: |
-          NAME=$(jq -r .name server.json)
-          FOUND=$(curl -fsS --get "https://registry.modelcontextprotocol.io/v0/servers" \
-            --data-urlencode "search=$NAME" \
-            --data-urlencode "version=${{ steps.pin.outputs.version }}" \
-            | jq --arg n "$NAME" '[.servers[]? | select(.name == $n)] | length')
-          echo "found=${FOUND:-0}" >> "$GITHUB_OUTPUT"
 
       - name: Authenticate to the MCP Registry
-        if: steps.published.outputs.found == '0'
         run: ./mcp-publisher login github-oidc
 
       - name: Publish server to the MCP Registry
-        if: steps.published.outputs.found == '0'
         run: ./mcp-publisher publish

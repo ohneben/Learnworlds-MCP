@@ -48,7 +48,7 @@ accordingly:
   behind it) only ever sees tool inputs and API responses, never your secrets.
 - **The HTTP endpoint is unauthenticated by default**, which is fine for
   localhost-only use (the bundled `docker-compose.yml` binds to `127.0.0.1`). If
-  you expose it beyond your machine, set `MCP_SHARED_TOKEN` and require it via an
+  you expose it beyond your machine, set `MCP_AUTH_TOKEN` and require it via an
   `Authorization: Bearer <token>` header. Prefer running it behind TLS (a reverse
   proxy) rather than exposing the raw port.
 - **Mind the destructive tools.** Eight tools delete data (users, enrollments,

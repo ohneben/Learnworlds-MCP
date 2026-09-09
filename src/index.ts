@@ -17,6 +17,7 @@ import { operationsToTools, type ToolDefinition } from "./tools.js";
 import {
   bearerFrom,
   hostAllowed,
+  healthHostAllowlist,
   hostAllowlist,
   loadHttpConfig,
   startupRefusal,
@@ -106,10 +107,10 @@ async function readBody(
     const buf = chunk as Buffer;
     size += buf.length;
     if (size > limitBytes) {
-      // Stop reading but leave the socket alive: the caller still has to write
-      // the 413, and destroying here means the client only sees a dropped
-      // connection instead of a usable error.
-      req.pause();
+      // Throwing out of `for await` already destroys the request and nulls its
+      // socket, so neither req.pause() nor a later req.destroy() does anything.
+      // The response socket is still alive, which is all the caller needs to
+      // write the 413.
       throw new BodyTooLarge(`Request body exceeds ${limitBytes} bytes`);
     }
     chunks.push(buf);
@@ -139,6 +140,13 @@ async function runHttp(tools: ToolDefinition[], config: ReturnType<typeof loadCo
     console.error(refusal);
     process.exit(1);
   }
+  if (cfg.portFellBack) {
+    console.error(
+      `learnworlds-mcp: WARNING - PORT=${process.env.PORT} is not a usable ` +
+        `port number, falling back to ${cfg.port}. A platform that injects ` +
+        `PORT will probe the value it injected, not this one.`,
+    );
+  }
   const weak = weakTokenWarning(cfg);
   if (weak) console.error(`learnworlds-mcp: ${weak}`);
   if (!cfg.authToken && cfg.allowInsecure) {
@@ -150,6 +158,7 @@ async function runHttp(tools: ToolDefinition[], config: ReturnType<typeof loadCo
   }
 
   const allowlist = hostAllowlist(cfg);
+  const healthAllowlist = healthHostAllowlist(cfg);
 
   type Session = {
     server: Server;
@@ -217,21 +226,36 @@ async function runHttp(tools: ToolDefinition[], config: ReturnType<typeof loadCo
 
     // 1. DNS-rebinding protection, on every route: /health used to answer with
     //    any Host header and hand out the server name and tool count.
-    if (allowlist && !hostAllowed(req.headers.host, allowlist)) {
+    const listForRequest =
+      req.method === "GET" && (req.url === "/health" || req.url?.startsWith("/health?"))
+        ? healthAllowlist
+        : allowlist;
+    if (listForRequest && !hostAllowed(req.headers.host, listForRequest)) {
       send(res, 403, rpcError(-32000, `Invalid Host: ${req.headers.host ?? "(missing)"}`));
       return;
     }
 
     // Liveness only. Behind the Host check, in front of the auth gate so a
     // platform health check needs no token.
-    if (req.method === "GET" && req.url === "/health") {
-      send(res, 200, { status: "ok", server: "learnworlds-mcp", tools: tools.length });
+    // Parse once: req.url carries the query string, and startsWith() turned
+    // /mcpXYZ and /mcp-evil into fully working MCP endpoints, which silently
+    // defeats any WAF rule, proxy route or rate limit scoped to exactly /mcp.
+    const pathname = (() => {
+      try {
+        return new URL(req.url!, "http://localhost").pathname;
+      } catch {
+        return req.url!;
+      }
+    })();
+    const isMcpPath = pathname === cfg.path || pathname.startsWith(cfg.path + "/");
+
+    if (req.method === "GET" && pathname === "/health") {
+      send(res, 200, { status: "ok", server: "learnworlds-mcp" });
       return;
     }
 
-    if (!req.url.startsWith(cfg.path)) {
-      res.writeHead(404, { "Content-Type": "text/plain" });
-      res.end(`Not found. MCP endpoint is ${cfg.path}`);
+    if (!isMcpPath) {
+      send(res, 404, rpcError(-32601, `Not found. MCP endpoint is ${cfg.path}`));
       return;
     }
 
@@ -253,8 +277,6 @@ async function runHttp(tools: ToolDefinition[], config: ReturnType<typeof loadCo
         } catch (err) {
           if (err instanceof BodyTooLarge) {
             send(res, 413, rpcError(-32600, `Request body exceeds the configured limit of ${cfg.bodyLimitBytes} bytes`));
-            // Only now drop what is still in flight; the client has its answer.
-            res.on("finish", () => req.destroy());
             return;
           }
           throw err;
@@ -288,7 +310,7 @@ async function runHttp(tools: ToolDefinition[], config: ReturnType<typeof loadCo
         await server.connect(transport);
         session = { server, transport, lastSeen: Date.now(), streams: 0 };
       } else {
-        send(res, 400, rpcError(-32000, "Bad Request: no valid session ID provided."));
+        send(res, req.method === "POST" ? 400 : 404, rpcError(-32000, "Bad Request: no valid session ID provided."));
         return;
       }
 
@@ -312,6 +334,21 @@ async function runHttp(tools: ToolDefinition[], config: ReturnType<typeof loadCo
         res.end();
       }
     }
+  });
+
+  httpServer.on("error", (err: NodeJS.ErrnoException) => {
+    const hint =
+      err.code === "EADDRINUSE"
+        ? ` Port ${cfg.port} is already in use.`
+        : err.code === "EACCES"
+          ? ` No permission to bind port ${cfg.port}.`
+          : err.code === "ENOTFOUND" || err.code === "EADDRNOTAVAIL"
+            ? ` HOST=${cfg.host} is not an address this machine can bind.`
+            : "";
+    console.error(
+      `Fatal: could not listen on ${cfg.host}:${cfg.port}.${hint} (${err.code ?? err.message})`,
+    );
+    process.exit(1);
   });
 
   httpServer.listen(cfg.port, cfg.host, () => {

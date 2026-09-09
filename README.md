@@ -5,6 +5,7 @@
 [![CI](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/ci.yml)
 [![Publish image & MCP Registry entry](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/docker-publish.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE.md)
+[![MCP Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.modelcontextprotocol.io%2Fv0.1%2Fservers%2Fio.github.ohneben%252Flearnworlds-mcp%2Fversions%2Flatest&query=%24.server.version&prefix=v&label=MCP%20Registry&color=blue&logo=modelcontextprotocol&logoColor=white)](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.ohneben%2Flearnworlds-mcp/versions/latest)
 [![Learnworlds-MCP MCP server](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP/badges/score.svg)](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP)
 
 Run your [LearnWorlds](https://www.learnworlds.com/) school in plain language from AI
@@ -106,7 +107,8 @@ stay in the server's environment — the model never sees or handles them.
 ```bash
 cp .env.example .env
 # edit .env → set LEARNWORLDS_BASE_URL, LEARNWORLDS_API_TOKEN, LEARNWORLDS_CLIENT_ID
-#           → set MCP_AUTH_TOKEN to a long random string if reachable beyond localhost
+#           → set MCP_AUTH_TOKEN (required once the port is published beyond
+#             127.0.0.1): openssl rand -hex 32
 ```
 
 **2. Start the server:**
@@ -364,9 +366,20 @@ the official MCP Registry does not yet list, that same run also publishes it the
 - Your API credentials live only in `.env`, which is git-ignored. **Never commit real
   secrets.** If the token leaks, rotate it in
   **LearnWorlds admin → Settings → Integrations → Developers (API)**.
-- The HTTP endpoint is unauthenticated by default (fine on localhost). To expose it
-  beyond your machine, set `MCP_AUTH_TOKEN` and send it as an
-  `Authorization: Bearer <token>` header — ideally behind TLS.
+- **The HTTP endpoint requires a token as soon as it is bound beyond loopback.**
+  Without `MCP_AUTH_TOKEN` the server refuses to start and the error explains what
+  to do. Send it as an `Authorization: Bearer <token>` header, ideally behind TLS.
+- **On localhost too:** without a token the `Host` header is restricted to
+  localhost names, so no web page can reach the endpoint via DNS rebinding. A
+  loopback bind alone is **not** protection. Behind a reverse proxy, set
+  `MCP_ALLOWED_HOSTS`.
+- **Behind a reverse proxy**, pin the `Host` header in the proxy to the internal
+  upstream name and put exactly that into `MCP_ALLOWED_HOSTS`. The check then does
+  not depend on the public domain and survives a domain change.
+  (Tip from [@WinFuture23](https://github.com/WinFuture23).)
+- **`/health` sits behind the Host check** but in front of the token check, so a
+  platform health check needs no token. If you set `MCP_ALLOWED_HOSTS`, the name
+  the health check uses has to be in the list.
 
 See [SECURITY.md](./SECURITY.md) for the full policy and how to report a vulnerability.
 

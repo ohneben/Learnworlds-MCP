@@ -3,7 +3,7 @@
   "name": "io.github.ohneben/learnworlds-mcp",
   "title": "LearnWorlds",
   "description": "All 94 LearnWorlds LMS API endpoints as safety-categorized MCP tools (read/write/destructive).",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "websiteUrl": "https://github.com/ohneben/Learnworlds-MCP#readme",
   "repository": {
     "url": "https://github.com/ohneben/Learnworlds-MCP",
@@ -12,7 +12,7 @@
   "packages": [
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/ohneben/learnworlds-mcp:1.1.0",
+      "identifier": "ghcr.io/ohneben/learnworlds-mcp:1.1.1",
       "runtimeHint": "docker",
       "transport": {
         "type": "streamable-http",

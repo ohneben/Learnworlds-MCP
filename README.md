@@ -1,11 +1,18 @@
-# ohneben's LearnWorlds MCP
+# ohneben LearnWorlds MCP
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ohneben-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/ohneben)
 
+---
+
+#### License & checks
+
 [![CI](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/ci.yml)
-[![Publish image & MCP Registry entry](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/ohneben/Learnworlds-MCP/actions/workflows/docker-publish.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE.md)
+
+#### MCP registries
+
 [![MCP Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.modelcontextprotocol.io%2Fv0.1%2Fservers%2Fio.github.ohneben%252Flearnworlds-mcp%2Fversions%2Flatest&query=%24.server.version&prefix=v&label=MCP%20Registry&color=blue&logo=modelcontextprotocol&logoColor=white)](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.ohneben%2Flearnworlds-mcp/versions/latest)
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/ohneben/learnworlds-mcp)
 [![Learnworlds-MCP MCP server](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP/badges/score.svg)](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP)
 
 Run your [LearnWorlds](https://www.learnworlds.com/) school in plain language from AI
@@ -36,7 +43,7 @@ LLM** and **easy to run for real**:
 | **Per-request timeouts** | A hung upstream call is aborted and retried instead of freezing the server. |
 | **Two transports: stdio *and* Streamable HTTP** | Use it locally in Claude Desktop, or run one always-on server that any number of MCP clients reach over HTTP. |
 | **Docker + docker-compose, health check, auto-restart** | Production-style deployment out of the box: `docker compose up` and it stays up. |
-| **Optional bearer-token auth** on the HTTP endpoint | Put the server behind a shared secret the moment it's reachable beyond localhost. |
+| **Bearer-token auth** on the HTTP endpoint | Required as soon as the server is bound beyond loopback: without `MCP_AUTH_TOKEN` it refuses to start rather than exposing the API unprotected. |
 | **Your secrets never reach the model** | Credentials live in the server's environment and are injected on every request — the assistant only ever sees tool inputs and API responses. |
 | **Drop-in spec updates** | LearnWorlds ships a newer YAML? Replace one file and rebuild — new endpoints become new tools automatically, no code changes. |
 
@@ -58,7 +65,7 @@ that leaves on the table:
 | `stdio` transport | ✅ | ✅ |
 | **Streamable-HTTP transport** | ✅ | ➖ |
 | **Docker + docker-compose**, health check, auto-restart | ✅ | ❌ |
-| **Optional bearer-token auth** on the endpoint | ✅ | ❌ |
+| **Enforced bearer-token auth** on the endpoint | ✅ | ❌ |
 | Credentials injected server-side, never sent to the model | ✅ | ➖ |
 | License | MIT | varies |
 
@@ -168,32 +175,6 @@ so you can skip the local build entirely:
 docker run -d --name learnworlds-mcp -p 127.0.0.1:8765:8765 --env-file .env \
   ghcr.io/ohneben/learnworlds-mcp:latest
 ```
-
-### Find it in a registry
-
-The server publishes itself to the [official MCP Registry](https://registry.modelcontextprotocol.io)
-as `io.github.ohneben/learnworlds-mcp`, so MCP clients that browse the registry can
-install it without cloning anything:
-
-```bash
-curl "https://registry.modelcontextprotocol.io/v0/servers?search=io.github.ohneben/learnworlds-mcp"
-```
-
-[`server.json`](./server.json) holds the registry metadata and
-[`glama.json`](./glama.json) the [Glama](https://glama.ai/mcp/servers/ohneben/Learnworlds-MCP)
-directory entry.
-
-Releasing is driven by the `version` in `server.json`: when a build sees a version the
-registry does not yet list, it tags the image with that version and publishes it, using
-GitHub OIDC so there is no token to store. Anything else — an ordinary push, a re-run,
-a second event for the same ref — leaves the released image tag and the registry entry
-untouched. Bumping the version is therefore the whole release: pushing a matching `v*`
-tag or running the workflow by hand still works and takes the same path, and a tag that
-disagrees with `server.json` fails the build rather than publishing the wrong thing.
-
-The `io.modelcontextprotocol.server.name` label in the [Dockerfile](./Dockerfile) is
-what proves the image belongs to that name, so keep it in step with `name` in
-`server.json`. It is applied at build time — there is nothing to verify by hand.
 
 ## Get your API credentials
 

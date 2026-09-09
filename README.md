@@ -359,8 +359,11 @@ the official MCP Registry does not yet list, that same run also publishes it the
   not depend on the public domain and survives a domain change.
   (Tip from [@WinFuture23](https://github.com/WinFuture23).)
 - **`/health` sits behind the Host check** but in front of the token check, so a
-  platform health check needs no token. If you set `MCP_ALLOWED_HOSTS`, the name
-  the health check uses has to be in the list.
+  platform health check needs no token. It additionally accepts `localhost`,
+  `127.0.0.1` and `[::1]` at all times, so the `HEALTHCHECK` in the bundled
+  Dockerfile keeps working when you pin `MCP_ALLOWED_HOSTS` to a public
+  hostname. If your platform probes over HTTP from elsewhere, its hostname has
+  to be in the list: Railway sends `Host: healthcheck.railway.app`.
 
 See [SECURITY.md](./SECURITY.md) for the full policy and how to report a vulnerability.
 

@@ -46,11 +46,15 @@ accordingly:
 - **Credentials never reach the model.** The server injects the bearer token and
   the `Lw-Client` header on every outgoing request; the MCP client (and the LLM
   behind it) only ever sees tool inputs and API responses, never your secrets.
-- **The HTTP endpoint is unauthenticated by default**, which is fine for
-  localhost-only use (the bundled `docker-compose.yml` binds to `127.0.0.1`). If
-  you expose it beyond your machine, set `MCP_AUTH_TOKEN` and require it via an
-  `Authorization: Bearer <token>` header. Prefer running it behind TLS (a reverse
-  proxy) rather than exposing the raw port.
+- **The HTTP endpoint requires a token as soon as it is bound beyond loopback.**
+  Without `MCP_AUTH_TOKEN` the server refuses to start and explains what to do.
+  Send the token as an `Authorization: Bearer <token>` header, ideally behind TLS
+  (a reverse proxy) rather than exposing the raw port.
+- **This applies on localhost too.** Without a token the `Host` header is
+  restricted to localhost names, because the server does not otherwise validate
+  it and any web page could reach a localhost endpoint via DNS rebinding. A
+  loopback bind on its own is **not** sufficient protection. Behind a reverse
+  proxy, set `MCP_ALLOWED_HOSTS` instead.
 - **Mind the destructive tools.** Eight tools delete data (users, enrollments,
   coupons, seats, and more). They carry `destructiveHint` / non-`readOnlyHint`
   annotations so a well-behaved host can prompt for confirmation — keep that

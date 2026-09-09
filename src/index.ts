@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -23,10 +24,28 @@ import {
   weakTokenWarning,
 } from "./http.js";
 
+const FALLBACK_VERSION = "unknown";
+
+/**
+ * The version reported over MCP. It comes from package.json, which CI stamps
+ * from the release tag and writes back to main, so the number is never
+ * maintained by hand and never drifts from what was actually published.
+ */
+function readPackageVersion(): string {
+  try {
+    const pkg = createRequire(import.meta.url)("../package.json") as {
+      version?: string;
+    };
+    return pkg.version ?? FALLBACK_VERSION;
+  } catch {
+    return FALLBACK_VERSION;
+  }
+}
+
 function buildServer(tools: ToolDefinition[], config: ReturnType<typeof loadConfig>): Server {
   const toolMap = new Map(tools.map((t) => [t.name, t]));
   const server = new Server(
-    { name: "learnworlds-mcp", version: "1.1.0" },
+    { name: "learnworlds-mcp", version: readPackageVersion() },
     { capabilities: { tools: {} } },
   );
 

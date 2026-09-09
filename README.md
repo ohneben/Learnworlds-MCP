@@ -106,7 +106,7 @@ stay in the server's environment — the model never sees or handles them.
 ```bash
 cp .env.example .env
 # edit .env → set LEARNWORLDS_BASE_URL, LEARNWORLDS_API_TOKEN, LEARNWORLDS_CLIENT_ID
-#           → set MCP_SHARED_TOKEN to a long random string if reachable beyond localhost
+#           → set MCP_AUTH_TOKEN to a long random string if reachable beyond localhost
 ```
 
 **2. Start the server:**
@@ -139,14 +139,14 @@ curl -s http://localhost:8765/health
         "args": [
           "mcp-remote",
           "http://localhost:8765/mcp",
-          "--header", "Authorization: Bearer YOUR_MCP_SHARED_TOKEN"
+          "--header", "Authorization: Bearer YOUR_MCP_AUTH_TOKEN"
         ]
       }
     }
   }
   ```
 
-  (Drop the `--header` line if you left `MCP_SHARED_TOKEN` empty.)
+  (Drop the `--header` line if you left `MCP_AUTH_TOKEN` empty.)
 
 - **Claude Code** — one command:
 
@@ -219,7 +219,12 @@ Everything is set in `.env` (copied from `.env.example`):
 | `PORT` | — | `8765` | HTTP listen port |
 | `HOST` | — | `0.0.0.0` | HTTP bind address |
 | `MCP_HTTP_PATH` | — | `/mcp` | HTTP MCP route |
-| `MCP_SHARED_TOKEN` | — | _(off)_ | Require `Authorization: Bearer <token>` on `/mcp` |
+| `MCP_AUTH_TOKEN` | ⚠️ | _(off)_ | Require `Authorization: Bearer <token>` on `/mcp`. **Required** when `HOST` is not a loopback address, otherwise the server refuses to start. Renamed from `MCP_SHARED_TOKEN` in 1.1.0 |
+| `MCP_ALLOWED_HOSTS` | — | _(automatic)_ | Comma-separated hostnames accepted in the `Host` header (DNS-rebinding protection). Needed behind a reverse proxy |
+| `MCP_ALLOW_INSECURE` | — | _(off)_ | Lifts the startup refusal. Only for an endpoint nobody else can reach |
+| `MCP_SESSION_TTL` | — | `1800` | Idle seconds before a session is dropped |
+| `MCP_MAX_SESSIONS` | — | `256` | Maximum concurrent sessions |
+| `MCP_BODY_LIMIT` | — | `25mb` | Largest accepted request body |
 | `LEARNWORLDS_MAX_REQUESTS` | — | `25` | Client-side requests per window (`0` disables throttling) |
 | `LEARNWORLDS_RATE_WINDOW_MS` | — | `10000` | Rate-limit window in ms |
 | `LEARNWORLDS_MAX_RETRIES` | — | `3` | Retries on `429` / `5xx` / network errors |
@@ -360,7 +365,7 @@ the official MCP Registry does not yet list, that same run also publishes it the
   secrets.** If the token leaks, rotate it in
   **LearnWorlds admin → Settings → Integrations → Developers (API)**.
 - The HTTP endpoint is unauthenticated by default (fine on localhost). To expose it
-  beyond your machine, set `MCP_SHARED_TOKEN` and send it as an
+  beyond your machine, set `MCP_AUTH_TOKEN` and send it as an
   `Authorization: Bearer <token>` header — ideally behind TLS.
 
 See [SECURITY.md](./SECURITY.md) for the full policy and how to report a vulnerability.

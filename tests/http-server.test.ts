@@ -23,7 +23,7 @@ vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ENTRY = join(ROOT, "dist", "index.js");
-/** Both servers word their ready line differently; this matches either. */
+/** Matches the ready line however it is worded. */
 const READY = /ready on http/;
 
 const CREDS = {
@@ -86,10 +86,9 @@ function rawRequest(
 
 
 /**
- * This server streams its replies as SSE (the Buchhaltungsbutler one sets
- * enableJsonResponse and answers with plain JSON). Both are valid Streamable
- * HTTP, so the test accepts either rather than pinning the wire format of
- * three running deployments.
+ * This server streams its replies as SSE rather than answering with plain
+ * JSON. Both are valid Streamable HTTP, so the helper accepts either rather
+ * than pinning the wire format of a running deployment.
  */
 async function readRpc(res: Response): Promise<any> {
   const text = await res.text();

@@ -41,8 +41,8 @@
         },
         {
           "name": "MCP_AUTH_TOKEN",
-          "description": "Optional bearer token required on the /mcp endpoint. Empty = open (localhost only).",
-          "isRequired": false,
+          "description": "Bearer token required on the /mcp endpoint. Required whenever HOST is not a loopback address, otherwise the server refuses to start.",
+          "isRequired": true,
           "isSecret": true,
           "format": "string"
         }

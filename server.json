@@ -15,36 +15,41 @@
       "identifier": "ghcr.io/ohneben/learnworlds-mcp:1.1.1",
       "runtimeHint": "docker",
       "transport": {
-        "type": "streamable-http",
-        "url": "http://localhost:8765/mcp"
+        "type": "stdio"
       },
       "environmentVariables": [
         {
+          "name": "MCP_TRANSPORT",
+          "description": "Server transport. Set to 'stdio' for local MCP clients; the image otherwise starts the Streamable HTTP transport.",
+          "isRequired": true,
+          "default": "stdio",
+          "choices": [
+            "stdio",
+            "http"
+          ]
+        },
+        {
           "name": "LEARNWORLDS_BASE_URL",
           "description": "Base URL of your LearnWorlds school's API, e.g. https://<your-school>.learnworlds.com/admin/api",
-          "isRequired": true,
-          "format": "string"
+          "isRequired": true
         },
         {
           "name": "LEARNWORLDS_API_TOKEN",
           "description": "Bearer access token (LearnWorlds admin -> Settings -> Integrations -> Developers).",
           "isRequired": true,
-          "isSecret": true,
-          "format": "string"
+          "isSecret": true
         },
         {
           "name": "LEARNWORLDS_CLIENT_ID",
           "description": "Your school's Client ID, sent as the Lw-Client header.",
           "isRequired": true,
-          "isSecret": true,
-          "format": "string"
+          "isSecret": true
         },
         {
           "name": "MCP_AUTH_TOKEN",
-          "description": "Optional bearer token required on the /mcp endpoint. Empty = open (localhost only).",
+          "description": "Only for MCP_TRANSPORT=http: bearer token required on /mcp. Without it a non-loopback bind refuses to start.",
           "isRequired": false,
-          "isSecret": true,
-          "format": "string"
+          "isSecret": true
         }
       ]
     }
